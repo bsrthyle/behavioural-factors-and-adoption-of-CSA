@@ -1,0 +1,801 @@
+---
+title: "Behavioural Factors Matter for the Adoption of Climate-Smart Agriculture"
+subtitle: "Supplementary Tables"
+#author: 'Martin Paul Jr, Tabe-Ojong, Marvin E., Kedinga & Bisrat Haile Gebrekidan'
+#date: "Last updated: `r Sys.time()`"
+output: 
+ bookdown::pdf_document2:
+    keep_tex: true
+    template: HelperUtilities/my_templet.tex
+    #highlight: zenburn
+header-includes:
+   - \usepackage[margin=2.8cm]{geometry}
+   - \renewcommand{\contentsname}{Table of Contents}
+   - \usepackage{enumitem}
+   - \usepackage{pifont}
+   - \renewcommand{\labelitemi}{$\rightarrow$}
+   - \usepackage{tocloft}
+   - \renewcommand\cftsecleader{\cftdotfill{\cftdotsep}}
+   - \usepackage{hyperref}
+   - \hypersetup{linkcolor = blue}
+   - \usepackage{hanging}
+   - \usepackage[T1]{fontenc}
+   - \usepackage{graphicx}
+   - \usepackage{booktabs,threeparttablex}
+   - \usepackage{pdflscape}
+   - \usepackage{fvextra}
+   - \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+   #- \usepackage{lmodern}
+   - \usepackage{fouriernc}
+   - \usepackage{caption}
+   - \usepackage{nimbusmono}
+   - \usepackage{lscape}
+   - \usepackage{longtable}  
+   - \renewcommand{\thetable}{S\arabic{table}}
+   - \renewcommand{\thefigure}{S\arabic{figure}}
+   - \setlength{\cfttabnumwidth}{1cm}
+
+toc: false
+toccolor: 'blue'
+mainfont: 'lm'
+toc-title: "Table of Contents"
+---
+
+```{r setup, include=FALSE, warning=FALSE, comment=FALSE}
+knitr::opts_chunk$set(
+  message = FALSE,
+  warning = FALSE,
+  echo = FALSE,
+  tidy = TRUE,
+  tidy.opts = list(width.cutoff = 60),
+  out.width = "100%"
+)
+
+options(width = 100)
+# load the required libraries
+
+extrafont::loadfonts(quiet = TRUE)
+#extrafont::font_import()
+
+# load the required libraries
+pacman::p_load(
+jsonlite,
+sjlabelled,
+labelled,
+dataMaid,
+plotly,
+wesanderson,
+ggthemes,
+hrbrthemes,
+sjmisc,
+expss,
+haven,
+knitr,
+kableExtra,
+ggstream,
+ggstatsplot,
+gtsummary,
+highcharter,
+tidyverse
+)
+```
+\newpage
+\tableofcontents
+\newpage
+\listoftables
+\newpage
+
+
+
+```{r}
+source("HelperUtilities/Utils.R", local = knitr::knit_global())
+my_font <- "Frutiger"
+```
+
+
+
+
+
+\newpage
+```{r, echo=FALSE}
+list_of_tables <- list()
+file_names <- list.files(here::here("stata_outputs", "SM_tables"), pattern = "*.txt")
+
+for(i in 1:length(file_names)){
+  list_of_tables[[i]] <- readr::read_delim(here::here("stata_outputs", "SM_tables", file_names[[i]]), delim = "\t", escape_double = FALSE, trim_ws = TRUE, skip = 1,na = "empty" )
+}
+
+
+names(list_of_tables) <- str_replace(file_names, ".txt", "")
+
+
+change_names <- function(df){
+  names(df) <- str_replace(names(df), "_", "-")
+  return(df)
+}
+
+list_of_tables <- purrr::map(list_of_tables, change_names)
+
+clean_space <- function(df) {
+  df %>%
+    mutate_all(~ (str_replace_all(., "%", "\\\\%")))
+}
+
+list_of_tables <- purrr::map(list_of_tables, clean_space)
+
+clean_slash <- function(df){
+  df %>%
+    mutate_all(~ (str_replace_all(., "/", "\\\\/")))
+}
+
+list_of_tables <- purrr::map(list_of_tables, clean_slash)
+
+color_significance <- function(df){
+  df[-1] <- lapply(
+  df[-1], function(x){
+    cell_spec(x, background = ifelse(str_count(x, "\\*")==1, "#8C298133", ifelse(str_count(x, "\\*")==2, "#641A8033", ifelse(str_count(x, "\\*")==3, "#3C0F7033", "white"))),color = ifelse(str_count(x, "\\*")>=1, "White", "black" ),bold = ifelse(str_count(x, "\\*")>=1,T, F ))
+  }
+)
+  
+  return(df)
+}
+
+```
+\newpage 
+
+
+\newpage
+# Descriptive statistics
+
+```{r, cache=TRUE}
+
+aspiration_df <- haven::as_factor(haven::read_dta("aspirations_investments_2.dta"), only_labelled = TRUE)
+
+
+tbl_strata_ex1 <-
+  aspiration_df %>%
+  mutate(educ_hh2= case_when(
+    str_starts(educ_hh, "Primary") ~ "Primary Education",
+    str_starts(educ_hh, "Secondary") ~ "Secondary Education",
+    str_starts(educ_hh, "University") ~ "University Education",
+    str_starts(educ_hh, "Postgraduate|Doctorate") ~ "University Education",
+    TRUE ~ educ_hh
+  ))%>%
+  mutate(num_csa=crop_rotation+intercropping+fallowing+manure, num_csa = factor(num_csa))%>%
+  select(c(country,crop_rotation,intercropping,fallowing,manure,num_csa,ihs_income_future,gap,gap_sq,ihs_income, Offfarm_participation, hh_size, credit_access ,age_hh ,educ_hh2 ,coop_membership, extension_contact, gender_hh, pc1))%>%
+  sjlabelled::var_labels(educ_hh2="Education level", num_csa="Number of CSA adopted")%>%
+  tbl_summary(
+    by = country,
+    statistic = list(all_continuous() ~ "{mean} ({sd})"))%>% 
+  add_p()
+
+
+#tbl_strata_ex1
+disc_tbl <- tbl_strata_ex1%>%
+  # convert to kableExtra
+  as_kable_extra(booktabs = TRUE, longtable = T,caption="Descriptive statistics by country") %>%
+  # reduce font size to make table fit. 
+  # you may also use the `latex_options =  c( c("scale_down", "hold_position"), "hold_position")` argument here.
+  kableExtra::kable_styling(font_size = 8, latex_options =  c("scale_down", "hold_position", "repeat_header"))%>%
+ # kableExtra::landscape()%>%
+  footnote(footnote_as_chunk = TRUE,
+           threeparttable = TRUE, general="The table above presents summary statistics of some of the regression variables by country. Two-sided t-tests were used for statistical testing, and the corresponding p-values are presented in the last column. The tests performed are Pearsons Chi-squared test for categorical variables and the Wilcoxon rank sum test for continuous variables." )
+disc_tbl
+
+```
+
+<!-- \begin{figure}[htbp] -->
+<!-- \centering -->
+<!-- \caption{Percentage of households co-adopting different CSA practices.} -->
+<!-- \includegraphics[width=\textwidth]{figures/fig_12.png} -->
+<!-- \caption*{ -->
+<!-- Note: The plot represents the pairwise adoption percentage of agricultural practices across households.Each tile represents a pair of practices. For example, the tile at the intersection of "Crop rotation" and "Intercropping" represents the percentage of households that adopted both "Crop rotation" and "Intercropping". The color of each tile indicates the percentage of adoption. Darker tiles signify a higher percentage of adoption, as denoted by the color gradient legend.The numbers in the tiles are the actual percentages of households adopting both practices in the corresponding pair. -->
+<!-- } -->
+
+<!-- \end{figure} -->
+\newpage
+# Main regression tables
+
+```{r}
+
+df <- list_of_tables$Table_SM2%>%
+  mutate(
+    LABELS = case_when(
+      LABELS=="" ~ VARIABLES,
+      TRUE ~ LABELS
+    )
+  )%>%
+  select(-VARIABLES)%>%
+  rename(variables = LABELS)
+
+
+
+
+kableExtra::kbl(df, longtable = T, booktabs = T, escape=F, align="lrrrr", linesep ="", caption = "Full OLS estimates of the relationship between aspirations and CSA practices")%>%
+kable_styling(font_size = 7, latex_options = c("repeat_header"))%>%
+  kableExtra::kable_paper()%>%
+  footnote(footnote_as_chunk = TRUE,
+           threeparttable = TRUE,general = "The table presents the results of OLS regressions between aspirations and CSA practices , with robust standard errors, where the standard errors are clustered. The statistical tests conducted are two-sided t-tests. P-values are denoted in square brackets. The presence of an asterisk (*) above a coefficient indicates that the coefficient is statistically different from zero at a predetermined level of significance (*** p<0.01, ** p<0.05, * p<0.1)")
+```
+
+\newpage
+
+```{r}
+
+df <- list_of_tables$Table_SM3%>%
+  mutate(
+    LABELS = case_when(
+      LABELS=="" ~ VARIABLES,
+      TRUE ~ LABELS
+    )
+  )%>%
+  select(-VARIABLES)%>%
+  rename(variables = LABELS)
+
+
+
+kableExtra::kbl(df, longtable = T, booktabs = T, escape=F, align="lrrrr", linesep ="" ,caption = "Full OLS estimates of the relationship between aspirations failure and adoption of CSA practices")%>%
+kable_styling(font_size = 7, latex_options = c("repeat_header"))%>%
+footnote(footnote_as_chunk = TRUE,
+           threeparttable = TRUE,general = "The table presents the results of OLS regressions between aspirations failure and CSA practices. Robust standard errors are in brackates. The statistical tests conducted are two-sided t-tests. P-values, denoted in square brackets. The presence of an asterisk (*) above a coefficient indicates that the coefficient is statistically different from zero at a predetermined level of significance (*** p<0.01, ** p<0.05, * p<0.1).")
+```
+
+% Please add the following required packages to your document preamble:
+
+% Note: It may be necessary to compile the document several times to get a multi-page table to line up properly
+\begin{landscape}
+\begin{longtable}[c]{@{}lrrrr@{}}
+\caption{U-shaped tests of aspiration failure }
+\label{tab:my-table}\\
+\toprule
+\textbf{} &
+  \multicolumn{1}{l}{\textbf{Crop rotation}} &
+  \multicolumn{1}{l}{\textbf{Intercropping}} &
+  \multicolumn{1}{l}{\textbf{Fallowing}} &
+  \multicolumn{1}{l}{\textbf{OSA}} \\* \midrule
+\endfirsthead
+%
+\endhead
+%
+\bottomrule
+\endfoot
+%
+\endlastfoot
+%
+\multicolumn{5}{c}{\textbf{{[}A{]} Pooled}}                                                                       \\* \midrule
+Turning point                      & 0.623            & 0.504              & 0.595             & 0.718            \\
+Sasabuchi p-value                  & 0.071            & \textless{}0.001   & 0.016             & 0.215            \\
+Slope at minimum                   & 0.568            & 1.218              & 0.631             & 0.418            \\
+Slope at maximum                   & -0.344           & -1.196             & -0.428            & -0.163           \\
+Fieller 95\% confidence   interval & {[}-Inf; +Inf{]} & {[}0.419; 0.569{]} & {[}0.427; 0.86{]} & {[}-Inf; +Inf{]} \\* \midrule
+\multicolumn{5}{c}{\textbf{{[}B{]} Cameroon}}                                                                     \\* \midrule
+Turning point                      & 0.515            & 0.494              & 0.507             & 0.604            \\
+Sasabuchi p-value                  & 0.067            & 0.002              & 0.019             & 0.169            \\
+Slope at minimum                   & 0.509            & 1.126              & 0.676             & 0.363            \\
+Slope at maximum                   & -0.478           & -1.149             & -0.656            & -0.238           \\
+Fieller 95\% confidence   interval & {[}-Inf; +Inf{]} & {[}0.356; 0.577{]} & {[}0.21; 0.834{]} & {[}-Inf; +Inf{]} \\* \midrule
+\multicolumn{5}{c}{\textbf{{[}C{]} Kenya}}                                                                        \\* \midrule
+Turning point                      & 0.7              & 0.555              & 0.803             & 0.696            \\
+Sasabuchi p-value                  & 0.142            & 0.054              & 0.267             & 0.229            \\
+Slope at minimum                   & 0.916            & 0.897              & 0.555             & 0.717            \\
+Slope at maximum                   & -0.392           & -0.716             & -0.136            & -0.312           \\
+Fieller 95\% confidence   interval & {[}-Inf; +Inf{]} & {[}-Inf; +Inf{]}   & {[}-Inf; +Inf{]}  & {[}-Inf; +Inf{]} \\* \bottomrule
+\end{longtable}
+\end{landscape}
+\newpage
+## Semi-parametric estimations of aspiration failure
+
+<!-- \begin{figure}[htbp] -->
+<!-- \centering -->
+<!-- \caption{Distribution of aspiration gap with 75th and 95th Percentiles} -->
+<!-- \includegraphics[width=\textwidth]{figures/fig_gap_dist.png} -->
+<!-- \caption*{ -->
+<!-- Note: The plot illustrates the distribution of the "aspiration gap" variable using both a histogram and a density plot.The plot also includes vertical dashed lines representing the 75th and 95th percentiles of the "aspiration gap" data. The 75th percentile indicates the "aspiration gap" value below which 75\% of the data falls, while the 95th percentile indicates the value below which 95\% of the "aspiration gap" data falls. -->
+<!-- } -->
+
+<!-- \end{figure} -->
+
+```{r, eval=FALSE}
+
+my_font <- "Frutiger"
+df <- aspiration_df%>%
+  select(interview__key, gap, fallowing, manure, intercropping, crop_rotation)%>%
+  pivot_longer(cols = c(fallowing, manure, intercropping, crop_rotation))%>%
+  mutate(name2 = str_to_sentence(name))%>%
+  mutate(name2 = case_when(
+   name2=="Manure" ~ "Organic soil\namendments",
+
+    name2=="Crop_rotation" ~ "Crop rotation",
+    TRUE ~ name2
+  ))
+
+
+fig_1 <- ggplot(df, aes(y=value, x=gap, color=name2)) + 
+  geom_smooth(method="loess", se=TRUE, span=0.9) +
+  facet_wrap(~name2, scales = "free_y") + # use facet_grid(~csa, scales = "free") for a grid layout
+  scale_color_brewer(palette="Set1")+ 
+  labs(x = "Aspiration gap", y = "") +
+  theme_bw(base_family = my_font, base_size = 18)+
+  theme(
+    legend.position = "none",
+      text = element_text(family = my_font, size = 14),
+      axis.text = element_text(family = my_font, size = 14),
+      strip.background = element_rect(fill = adjustcolor("#679DBB", alpha.f = 0.8), color = "#679DBB"),
+
+      panel.border = element_rect(size = 0, fill = NA),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line( linetype = 3),
+      strip.text = element_text(
+        family = my_font,
+        size = 14, color = "black" )
+  )
+
+fig_1
+
+ggsave("figures/fig_NP.pdf", plot = fig_1, width = 25, height = 20, units = "cm",device = cairo_pdf)
+ggsave("figures/fig_NP.png", plot = fig_1, width = 25, height = 20, units = "cm")
+
+```
+\begin{figure}[htbp]
+\centering
+\caption{Loess smoothed relationship between Practice and Gap for each level of CSA}
+\includegraphics[width=\textwidth]{figures/fig_NP.pdf}
+
+\caption*{
+Note: The graph illustrates the relationship between the CSA and Aspiration Gap, stratified by the four different practices.The solid line on each plot depicts a Loess smoothed relationship between aspiration gap and 
+practices. Loess smoothing is a nonparametric method that uses local weighted regression to fit a smooth curve through points in a scatter plot. This line represents the trend of CSA adoption as aspiration gap changes. The shaded region around the Loess line represents 95\% Confidence intervals. The width of the shaded region at any point along the x-axis provides a measure of the uncertainty around the estimate of the mean of adoption rate at that point. 
+}
+\end{figure}
+
+
+```{r, eval=FALSE}
+# Sample data (replace this with your actual data)
+data <- aspiration_df$gap
+
+# Calculate the percentiles
+# Sample data (replace this with your actual data)
+
+# Calculate the percentiles
+percentiles <- quantile(data, probs = c(0.75, 0.95))
+
+# Create a data frame for the percentiles
+percentile_df <- data.frame(
+  Percentile = c("75th", "95th"),
+  Value = percentiles
+)
+
+
+
+
+
+
+# Create the histogram with ggplot
+ss <- ggplot(data.frame(x = data), aes(x)) +
+  geom_histogram(binwidth = 0.02, fill = "lightblue", color = "white") +
+geom_density(aes(y = ..scaled.. * 100), color = "#30469c", size = 1) +
+  geom_vline(data = percentile_df, aes(xintercept = Value), 
+             color = c("#e3542a", "#002454"), linetype = "dashed", size = 1) +
+  geom_text(data = percentile_df, aes(x = Value+0.02, y = 120, label = Percentile),
+            vjust = -0.5, color = c("#e3542a", "#002454"), size = 3) +
+  labs(title = "",
+       x = "Aspirations gap", y = "Frequency") +
+  theme_minimal(base_family = my_font)
+
+ss
+
+ggsave("figures/fig_gap_dist.png", plot = ss, width = 25, height = 20, units = "cm")
+
+
+
+```
+
+
+
+```{r, eval=FALSE}
+
+my_font <- "Frutiger"
+df <- aspiration_df%>%
+  select(interview__key, gap, fallowing, manure, intercropping, crop_rotation)%>%
+  pivot_longer(cols = c(fallowing, manure, intercropping, crop_rotation))%>%
+  mutate(name2 = str_to_sentence(name))%>%
+  mutate(name2 = case_when(
+   name2=="Manure" ~ "Organic soil\namendments",
+
+    name2=="Crop_rotation" ~ "Crop rotation",
+    TRUE ~ name2
+  ))
+
+# df 2 group by name2 and get the 75th and 90th percentile of gap
+df2 <- df %>%
+  group_by(name2) %>%
+  summarise(percentile_75 = quantile(gap, 0.75),
+            percentile_90 = quantile(gap, 0.90))
+
+percentile_75 <- quantile(aspiration_df$gap, 0.75)
+percentile_90 <- quantile(aspiration_df$gap, 0.90)
+
+# vertical lines marking the 75th and 90th percentiles of the observed values (gap)
+vline_75 <- geom_vline(xintercept = percentile_75, linetype = "dashed", color = "#800013", size = 0.86)
+vline_90 <- geom_vline(xintercept = percentile_90,  color = "#346233", size = 0.8)
+
+# add the vertical lines to the plot
+
+# add the text labels to the plot
+
+
+fig_1 <- ggplot(df, aes(y=value, x=gap, color=name2)) + 
+  geom_smooth(method="loess", se=TRUE, span=0.8) +
+  #geom_smooth(method="glm",  method.args = list(family="binomial"))  + 
+  facet_wrap(~name2, scales = "free_y") + # use facet_grid(~csa, scales = "free") for a grid layout
+  scale_color_brewer(palette="Set1")+ 
+  labs(x = "Aspiration gap", y = "") +
+  theme_bw(base_family = my_font, base_size = 18)+
+  theme(
+    legend.position = "none",
+      text = element_text(family = my_font, size = 14),
+      axis.text = element_text(family = my_font, size = 14),
+      strip.background = element_rect(fill = adjustcolor("#679DBB", alpha.f = 0.8), color = "#679DBB"),
+
+      panel.border = element_rect(size = 0, fill = NA),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(size = 0.5, linetype = 3),
+      strip.text = element_text(
+        family = my_font,
+        size = 14, color = "black" )
+  )
+fig_1 <- fig_1 + vline_75 + vline_90
+fig_1
+
+ggsave("figures/fig_NP.pdf", plot = fig_1, width = 25, height = 20, units = "cm",device = cairo_pdf)
+ggsave("figures/fig_NP.png", plot = fig_1, width = 25, height = 20, units = "cm")
+
+```
+\newpage
+## Cameroon
+
+```{r, eval=FALSE}
+df_cam <- aspiration_df%>%
+  filter(country=="Cameroon")%>%
+  select(interview__key, gap, fallowing, manure, intercropping, crop_rotation)%>%
+  pivot_longer(cols = c(fallowing, manure, intercropping, crop_rotation))%>%
+  mutate(name2 = str_to_sentence(name))%>%
+  mutate(name2 = case_when(
+    name2=="Crop_rotation" ~ "Crop rotation",
+    name2=="Manure" ~ "Organic soil\namendments",
+
+    TRUE ~ name2
+  ))
+
+
+fig_2 <- ggplot(df_cam, aes(y=value, x=gap, color=name2)) + 
+  geom_smooth(method="loess", se=TRUE, span=0.9) +
+  facet_wrap(~name2, scales = "free_y") + # use facet_grid(~csa, scales = "free") for a grid layout
+  scale_color_brewer(palette="Set1")+ 
+  labs(x = "Aspiration gap", y = "") +
+  theme_bw(base_family = my_font, base_size = 18)+
+  theme(
+    legend.position = "none",
+      text = element_text(family = my_font, size = 14),
+      axis.text = element_text(family = my_font, size = 14),
+      strip.background = element_rect(fill = adjustcolor("#679DBB", alpha.f = 0.8), color = "#679DBB"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(size = 0.4, linetype = 3),
+
+      panel.border = element_rect(size = 0, fill = NA),
+      strip.text = element_text(
+        family = my_font,
+        size = 14, color = "black" )
+  )
+
+fig_2
+
+ggsave("figures/fig_NP_cam.pdf", plot = fig_2, width = 25, height = 20, units = "cm",device = cairo_pdf)
+ggsave("figures/fig_NP_cam.png", plot = fig_2, width = 25, height = 20, units = "cm")
+
+```
+
+\begin{figure}[htbp]
+\centering
+\caption{Loess smoothed relationship between Practice and Gap for each level of CSA (Cameroon)}
+\includegraphics[width=\textwidth]{figures/fig_NP_cam.pdf}
+
+\caption*{
+Note: The graph illustrates the relationship between the variable CSA and Aspiration Gap, stratified by the four different practices for Cameroon.The solid line on each plot depicts a Loess smoothed relationship between aspiration gap and CSA practices. Loess smoothing is a nonparametric method that uses local weighted regression to fit a smooth curve through points in a scatter plot. This line represents the trend of CSA adoption as aspiration gap changes. The shaded region around the Loess line represents 95\% Confidence intervals. The width of the shaded region at any point along the x-axis provides a measure of the uncertainty around the estimate of the mean of adopion rate at that point. 
+}
+\end{figure}
+
+\newpage
+## Kenya
+
+```{r, eval=FALSE}
+df_ken <- aspiration_df%>%
+  filter(country=="Kenya")%>%
+  select(interview__key, gap, fallowing, manure, intercropping, crop_rotation)%>%
+  pivot_longer(cols = c(fallowing, manure, intercropping, crop_rotation))%>%
+  mutate(name2 = str_to_sentence(name))%>%
+  mutate(name2 = case_when(
+    name2=="Crop_rotation" ~ "Crop rotation",
+    name2=="Manure" ~ "Organic soil\namendments",
+    TRUE ~ name2
+  ))
+
+
+fig_3 <- ggplot(df_ken, aes(y=value, x=gap, color=name2)) + 
+  geom_smooth(method="loess", se=TRUE, span=0.9 ) +
+  facet_wrap(~name2, scales = "free_y") + # use facet_grid(~csa, scales = "free") for a grid layout
+  scale_color_brewer(palette="Set1")+ 
+  labs(x = "Aspiration gap", y = "") +
+  theme_bw(base_family = my_font, base_size = 18)+
+  theme(
+    legend.position = "none",
+      text = element_text(family = my_font, size = 14),
+      axis.text = element_text(family = my_font, size = 14),
+      strip.background = element_rect(fill = adjustcolor("#679DBB", alpha.f = 0.8), color = "#679DBB"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(size = 0.4, linetype = 3),
+
+      panel.border = element_rect(size = 0, fill = NA),
+      strip.text = element_text(
+        family = my_font,
+        size = 14, color = "black" )
+  )
+fig_3
+ggsave("figures/fig_NP_ken.pdf", plot = fig_3, width = 25, height = 20, units = "cm",device = cairo_pdf)
+ggsave("figures/fig_NP_ken.png", plot = fig_3, width = 25, height = 20, units = "cm")
+
+library(KernSmooth)
+library(locpol)
+y <-aspiration_df$intercropping
+x <-aspiration_df$gap
+plot(x, y)
+fit <- locpoly(x, y, bandwidth = 0.3)
+plot(fit)
+
+rr <- locpol::locpol(intercropping ~ gap, data = aspiration_df, bw = 0.13)
+plot(rr)
+
+```
+
+\begin{figure}[htbp]
+\centering
+\caption{Loess smoothed relationship between Practice and Gap for each level of CSA (Kenya)}
+\includegraphics[width=\textwidth]{figures/fig_NP_ken.pdf}
+
+\caption*{
+Note: The graph illustrates the relationship between the variable CSA and Aspiration Gap, stratified by the four different practices for Kenya.The solid line on each plot depicts a Loess smoothed relationship between aspiration gap and CSA practices. Loess smoothing is a nonparametric method that uses local weighted regression to fit a smooth curve through points in a scatter plot. This line represents the trend of CSA adoption as aspiration gap changes. The shaded region around the Loess line represents 95\% Confidence intervals. The width of the shaded region at any point along the x-axis provides a measure of the uncertainty around the estimate of the mean of adoption rate at that point. 
+}
+\end{figure}
+\newpage
+# Cross country heterogeneity
+
+```{r}
+
+df <- list_of_tables$Table_SM4%>%
+  mutate(
+    LABELS = case_when(
+      LABELS=="" ~ VARIABLES,
+      TRUE ~ LABELS
+    )
+  )%>%
+  select(-VARIABLES)%>%
+  rename(variables = LABELS)
+
+
+kableExtra::kbl(df, longtable = T, booktabs = T, escape=F,col.names = c("variables", "Crop rotation (1/0)" ,          "Intercropping (1/0)"          
+, "Fallowing (1/0)"      ,         "Organic soil amendments (1/0)","Crop rotation (1/0)" ,          "Intercropping (1/0)"          
+, "Fallowing (1/0)"      ,         "Organic soil amendments (1/0)"), align="lrrrr", linesep ="" , caption = " Full OLS estimates of the relationship between aspirations and CSA practices by country")%>%
+kable_styling(font_size = 7, latex_options = c("repeat_header"))%>%
+add_header_above(c(" ", "Cameroon" = 4, "Kenya" = 4))%>%
+  landscape()%>%
+  footnote(footnote_as_chunk = TRUE,
+           threeparttable = TRUE,general = "The table presents the results of OLS regressions between aspirations failure and CSA practices by country.Robust standard errors are in brackates. The statistical tests conducted are two-sided t-tests. P-values is denoted in square brackets. The presence of an asterisk (*) above a coefficient indicates that the coefficient is statistically different from zero at a predetermined level of significance (*** p<0.01, ** p<0.05, * p<0.1). All regressions include a comprehensive set of village fixed effects to control for potential unobserved heterogeneity.")
+```
+
+\newpage
+
+```{r}
+
+df <- list_of_tables$Table_SM5%>%
+  mutate(
+    LABELS = case_when(
+      LABELS=="" ~ VARIABLES,
+      TRUE ~ LABELS
+    )
+  )%>%
+  select(-VARIABLES)%>%
+  rename(variables = LABELS)
+
+
+kableExtra::kbl(df, longtable = T, booktabs = T, escape=F,col.names = c("variables", "Crop rotation (1/0)" ,          "Intercropping (1/0)"          
+, "Fallowing (1/0)"      ,         "Organic soil amendments (1/0)","Crop rotation (1/0)" ,          "Intercropping (1/0)"          
+, "Fallowing (1/0)"      ,         "Organic soil amendments (1/0)"), align="lrrrr", linesep ="" , caption = " Full OLS estimates of the relationship between aspirations failure and CSA practices by country")%>%
+kable_styling(font_size = 7, latex_options = c("repeat_header"))%>%
+add_header_above(c(" ", "Cameroon" = 4, "Kenya" = 4))%>%
+  landscape()%>%
+  footnote(footnote_as_chunk = TRUE,
+           threeparttable = TRUE,general = "The table presents the results of OLS regressions between aspirations failure and CSA practices by country.Robust standard errors are in brackates. The statistical tests conducted are two-sided t-tests. P-values is denoted in square brackets. The presence of an asterisk (*) above a coefficient indicates that the coefficient is statistically different from zero at a predetermined level of significance (*** p<0.01, ** p<0.05, * p<0.1). All regressions include a comprehensive set of district fixed effects to control for potential unobserved heterogeneity.")
+```
+\newpage
+
+
+
+
+```{r, eval=FALSE}
+
+df <- list_of_tables$Table_SM6%>%
+  mutate(
+    LABELS = case_when(
+      LABELS=="" ~ VARIABLES,
+      TRUE ~ LABELS
+    )
+  )%>%
+  select(-VARIABLES)%>%
+  rename(variables = LABELS)
+
+
+kableExtra::kbl(df, longtable = T, booktabs = T, escape=F, align="lrrrr", linesep ="", caption = "Full 2SLS estimates of the relationship between adoption and commercialization")%>%
+kable_styling(font_size = 7, latex_options = c("repeat_header"))%>%
+footnote(footnote_as_chunk = TRUE,
+           threeparttable = TRUE,general = "The table provides the results of 2SLS regressions examining the relationship between adoption decision (`Adoption dummy`) and various factors related to Market participation (1), Quantity sold (2), and Sales value (3). The regressions were estimated using both Random Effect (RE) and Fixed Effect (FE) specifications, with robust standard errors shown in brackets. The statistical tests conducted were two-sided t-tests, and p-values are denoted in square brackets. Coefficients marked with an asterisk (*) indicate statistical significance at predetermined levels of significance (*** p<0.01, ** p<0.05, * p<0.1). To account for potential unobserved heterogeneity, all regressions include a comprehensive set of district fixed effects.")
+```
+
+\newpage
+
+# MVP of the relationship between aspirations, aspiration failures and CSA practices
+
+```{r}
+
+df <- list_of_tables$Table_SM7%>%
+  mutate(
+    LABELS = case_when(
+      LABELS=="" ~ VARIABLES,
+      TRUE ~ LABELS
+    )
+  )%>%
+  select(-VARIABLES)%>%
+  rename(variables = LABELS)%>%
+  select(variables:manure)%>%
+  rename(OSA = manure )
+
+df2 <- list_of_tables$Table_SM7%>%
+  mutate(
+    LABELS = case_when(
+      LABELS=="" ~ VARIABLES,
+      TRUE ~ LABELS
+    )
+  )%>%
+  select(-VARIABLES)%>%
+  rename(variables = LABELS)%>%
+  select(variables, starts_with("ata"))%>%
+  filter(`atanhrho-12` != "")%>%
+  slice(1:2)%>%
+  mutate(variables= case_when(variables=="" ~ "Std. Err.", TRUE ~ "Coefficent"))%>%
+  rownames_to_column() %>% 
+  rename("\\_" = variables)%>%
+pivot_longer(!rowname, names_to = "col1", values_to = "col2") %>% 
+pivot_wider(names_from = "rowname", values_from = "col2")
+
+names(df2) <- c("variables"  ,   "crop-rotation", "intercropping")
+ 
+
+df3 <- rows_append(df, df2)%>%
+  slice(1:26,29:35,27:28)
+df3[is.na(df3)] <- ""
+
+
+kableExtra::kbl(df3, longtable = T, booktabs = T, escape=F, align="lrrrr",col.names = c("variables", "Crop rotation (1/0)" ,          "Intercropping (1/0)"          
+, "Fallowing (1/0)"      ,         "Organic soil amendments (1/0)"), linesep ="" ,caption = "MVP of the relationship between aspirations and CSA practices")%>%
+kable_styling(font_size = 7, latex_options = c("repeat_header"))%>%
+kableExtra::row_spec(c(22,26,27,33), hline_after = T)%>%
+landscape()%>%
+  footnote(footnote_as_chunk = TRUE,
+           threeparttable = TRUE,general = "This table displays the findings of Multivariate Probit (MVP) regressions, applied to investigate the relationship between aspiration and the adoption of Climate-Smart Agriculture (CSA) practices. Robust standard errors are reported in brackets to control for potential heteroscedasticity. Two-sided t-tests were conducted for the statistical tests, and corresponding p-values are noted within square brackets. Coefficients denoted with an asterisk () represent statistical significance at pre-established levels (** p<0.01, ** p<0.05, * p<0.1). To account for potential unobserved heterogeneity, all regressions incorporate a comprehensive set of village fixed effects.")
+```
+\newpage
+
+```{r}
+
+df <- list_of_tables$Table_SM8%>%
+  mutate(
+    LABELS = case_when(
+      LABELS=="" ~ VARIABLES,
+      TRUE ~ LABELS
+    )
+  )%>%
+  select(-VARIABLES)%>%
+  rename(variables = LABELS)%>%
+  select(variables:manure)%>%
+  rename(OSA = manure )
+
+  
+df2 <- list_of_tables$Table_SM8%>%
+  mutate(
+    LABELS = case_when(
+      LABELS=="" ~ VARIABLES,
+      TRUE ~ LABELS
+    )
+  )%>%
+  select(-VARIABLES)%>%
+  rename(variables = LABELS)%>%
+  select(variables, starts_with("ata"))%>%
+  filter(`atanhrho-12` != "")%>%
+  slice(1:2)%>%
+  mutate(variables= case_when(variables=="" ~ "Std. Err.", TRUE ~ "Coefficent"))%>%
+  rownames_to_column() %>% 
+  rename("\\_" = variables)%>%
+pivot_longer(!rowname, names_to = "col1", values_to = "col2") %>% 
+pivot_wider(names_from = "rowname", values_from = "col2")
+
+names(df2) <- c("variables"  ,   "crop-rotation", "intercropping")
+ 
+
+df3 <- rows_append(df, df2)%>%
+  slice(1:28,31:37,29:30)
+df3[is.na(df3)] <- ""
+
+
+kableExtra::kbl(df3, longtable = T, booktabs = T, escape=F, align="lrrrr",col.names = c("variables", "Crop rotation (1/0)" ,          "Intercropping (1/0)"          
+, "Fallowing (1/0)"      ,         "Organic soil amendments (1/0)"), linesep ="",caption = "MVP of the relationship between aspiration failure and CSA practices")%>%
+kable_styling(font_size = 7, latex_options = c("repeat_header"))%>%
+kableExtra::row_spec(c(24,28,29,35), hline_after = T)%>%
+landscape()%>%
+  footnote(footnote_as_chunk = TRUE,
+           threeparttable = TRUE,general = "The table displays the findings of Multivariate Probit (MVP) regressions, applied to investigate the relationship between aspiration failure and the adoption of Climate-Smart Agriculture (CSA) practices. Robust standard errors are reported in brackets to control for potential heteroscedasticity. Two-sided t-tests were conducted for the statistical tests, and corresponding p-values are noted within square brackets. Coefficients denoted with an asterisk () represent statistical significance at pre-established levels (** p<0.01, ** p<0.05, * p<0.1). To account for potential unobserved heterogeneity, all regressions incorporate a comprehensive set of village fixed effects.")
+```
+# Robustness Checks
+\newpage
+```{r}
+
+df <- list_of_tables$Table_SM9%>%
+  mutate(
+    LABELS = case_when(
+      LABELS=="" ~ VARIABLES,
+      TRUE ~ LABELS
+    )
+  )%>%
+  select(-VARIABLES)%>%
+  rename(variables = LABELS)%>%
+  mutate(
+   variables = gsub("\\(.*", "", variables)
+  )
+
+
+
+kableExtra::kbl(df, longtable = T, booktabs = T, escape=F, align="lrrrr", linesep ="", col.names=c("variable","(1)","(2)","(3)","(1)","(2)","(3)"), caption = " Full Poisson and Ordered probit estimates of the relationship between aspiration and CSA practices ")%>%
+kable_styling(font_size = 7, latex_options = c("repeat_header"))%>%
+add_header_above(c(" ", "POISSON"=3, "ORDERED PROBIT"=3))%>%
+landscape()%>%
+  footnote(footnote_as_chunk = TRUE,
+           threeparttable = TRUE,general = "The table provides the findings from Full Poisson and Ordered probit estimations, carried out to explore the association between aspiration and Climate-Smart Agriculture (CSA) practices. The Full Poisson model was utilized to handle count outcomes while the Ordered probit model was used for ordinal outcomes. Robust standard errors, stated within brackets, were utilized to mitigate the impact of heteroscedasticity. Statistical tests were performed using two-sided t-tests, and the corresponding p-values are displayed within square brackets. Coefficients designated with an asterisk () indicate statistical significance at preset significance thresholds (** p<0.01, ** p<0.05, * p<0.1). ")
+```
+\newpage
+
+
+
+
+
+
+
+
+
+```{r}
+df <- list_of_tables$Table_SM10%>%
+  mutate(
+    LABELS = case_when(
+      LABELS=="" ~ VARIABLES,
+      TRUE ~ LABELS
+    )
+  )%>%
+  select(-VARIABLES)%>%
+  rename(variables = LABELS)
+
+
+kableExtra::kbl(df, longtable = T, booktabs = T, escape=F,col.names = c("variables", "(1)", "(2)"), align="lrrr", linesep ="" ,caption = "Full Poisson and Ordered probit estimates of the relationship between aspiration filure and CSA practices")%>%
+kable_styling(font_size = 7, latex_options = c("repeat_header"))%>%
+  landscape()%>%
+  add_header_above(c(" ", "POISSON", "ORDERED PROBIT"))%>%
+  footnote(footnote_as_chunk = TRUE,
+           threeparttable = TRUE,general = "The table provides the findings from Full Poisson and Ordered probit estimations, carried out to explore the association between aspiration failure and Climate-Smart Agriculture (CSA) practices. The Full Poisson model was utilized to handle count outcomes while the Ordered probit model was used for ordinal outcomes. Robust standard errors, stated within brackets, were utilized to mitigate the impact of heteroscedasticity. Statistical tests were performed using two-sided t-tests, and the corresponding p-values are displayed within square brackets. Coefficients designated with an asterisk () indicate statistical significance at preset significance thresholds (** p<0.01, ** p<0.05, * p<0.1).")
+```
+
+
