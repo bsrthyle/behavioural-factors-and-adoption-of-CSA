@@ -23,7 +23,7 @@ Included are the code for recreating the paper's graphs and charts, along with a
 ## Supplementary Materials: (3_Supplementary_Tables.Rmd)
 
 Here, you'll find additional resources that complement the main findings of our study.
-This may include extended data tables, additional statistical analyses, and robustness checks that provide further context and support for our conclusions.
+This include extended data tables, additional statistical analyses, and robustness checks that provide further context and support for our conclusions.
 
 ---
 
