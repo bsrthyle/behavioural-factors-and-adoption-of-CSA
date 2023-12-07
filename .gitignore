@@ -3,4 +3,4 @@
 .RData
 .Ruserdata
 3_Supplementary_Tables_cache/
-.log
+*.log
