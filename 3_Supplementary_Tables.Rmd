@@ -145,27 +145,31 @@ color_significance <- function(df){
 
 
 \newpage
+
 # Descriptive statistics
 
 ```{r, cache=TRUE}
 
-aspiration_df <- haven::as_factor(haven::read_dta("aspirations_investments_2.dta"), only_labelled = TRUE)
+aspiration_df <- haven::as_factor(haven::read_dta("data/main_data.dta"), only_labelled = TRUE)
 
 
 tbl_strata_ex1 <-
   aspiration_df %>%
   mutate(educ_hh2= case_when(
-    str_starts(educ_hh, "Primary") ~ "Primary Education",
-    str_starts(educ_hh, "Secondary") ~ "Secondary Education",
-    str_starts(educ_hh, "University") ~ "University Education",
-    str_starts(educ_hh, "Postgraduate|Doctorate") ~ "University Education",
-    TRUE ~ educ_hh
+    stringr::str_starts(educ_hh, "Primary") ~ "Primary Education",
+    stringr::str_starts(educ_hh, "Secondary") ~ "Secondary Education",
+    stringr::str_starts(educ_hh, "University") ~ "University Education",
+    stringr::str_starts(educ_hh, "Postgraduate|Doctorate") ~ "University Education",
+    stringr::str_starts(educ_hh, "No formal education|Nursery Education") ~ "No formal education",
+    #TRUE ~ educ_hh
   ))%>%
   mutate(num_csa=crop_rotation+intercropping+fallowing+manure, num_csa = factor(num_csa))%>%
   select(c(country,crop_rotation,intercropping,fallowing,manure,num_csa,ihs_income_future,gap,gap_sq,ihs_income, Offfarm_participation, hh_size, credit_access ,age_hh ,educ_hh2 ,coop_membership, extension_contact, gender_hh, pc1))%>%
-  sjlabelled::var_labels(educ_hh2="Education level", num_csa="Number of CSA adopted")%>%
+  sjlabelled::var_labels(educ_hh2="Education level", num_csa="Number of CSA adopted", gender_hh = "Gender of head")%>%
   tbl_summary(
     by = country,
+    type = list(gender_hh ~ "categorical"),
+    #value = list(gender_hh = 0),
     statistic = list(all_continuous() ~ "{mean} ({sd})"))%>% 
   add_p()
 
@@ -194,6 +198,7 @@ disc_tbl
 
 <!-- \end{figure} -->
 \newpage
+
 # Main regression tables
 
 ```{r}
@@ -283,6 +288,7 @@ Fieller 95\% confidence   interval & {[}-Inf; +Inf{]} & {[}-Inf; +Inf{]}   & {[}
 \end{longtable}
 \end{landscape}
 \newpage
+
 ## Semi-parametric estimations of aspiration failure
 
 <!-- \begin{figure}[htbp] -->
@@ -297,7 +303,7 @@ Fieller 95\% confidence   interval & {[}-Inf; +Inf{]} & {[}-Inf; +Inf{]}   & {[}
 
 ```{r, eval=FALSE}
 
-my_font <- "Frutiger"
+
 df <- aspiration_df%>%
   select(interview__key, gap, fallowing, manure, intercropping, crop_rotation)%>%
   pivot_longer(cols = c(fallowing, manure, intercropping, crop_rotation))%>%
@@ -309,26 +315,38 @@ df <- aspiration_df%>%
     TRUE ~ name2
   ))
 
+percentile_75 <- quantile(aspiration_df$gap, 0.75)
+percentile_90 <- quantile(aspiration_df$gap, 0.90)
 
-fig_1 <- ggplot(df, aes(y=value, x=gap, color=name2)) + 
-  geom_smooth(method="loess", se=TRUE, span=0.9) +
+# vertical lines marking the 75th and 90th percentiles of the observed values (gap)
+vline_75 <- geom_vline(xintercept = percentile_75, linetype = "dashed", color = "#800013", size = 0.86)
+vline_90 <- geom_vline(xintercept = percentile_90,  color = "#346233", size = 0.8)
+
+
+
+
+fig_1 <- ggplot(df, aes(y=value, x=gap, color=name2, fill=name2)) + 
+  geom_smooth(method="loess", se=TRUE, span=0.8) +
   facet_wrap(~name2, scales = "free_y") + # use facet_grid(~csa, scales = "free") for a grid layout
   scale_color_brewer(palette="Set1")+ 
+  scale_fill_manual(values = c("#95BAFF", "#95BAFF","#95BAFF","#95BAFF"))+
   labs(x = "Aspiration gap", y = "") +
   theme_bw(base_family = my_font, base_size = 18)+
   theme(
     legend.position = "none",
       text = element_text(family = my_font, size = 14),
       axis.text = element_text(family = my_font, size = 14),
-      strip.background = element_rect(fill = adjustcolor("#679DBB", alpha.f = 0.8), color = "#679DBB"),
+      strip.background = element_rect(fill = adjustcolor("#679DBB", alpha.f = 0.7), color = "#679DBB"),
 
       panel.border = element_rect(size = 0, fill = NA),
     panel.grid.minor = element_blank(),
-    panel.grid.major = element_line( linetype = 3),
+    panel.grid.major = element_line( linetype = 3, size = 0.5),
       strip.text = element_text(
         family = my_font,
         size = 14, color = "black" )
   )
+
+fig_1 <- fig_1 + vline_75 + vline_90 
 
 fig_1
 
@@ -343,7 +361,7 @@ ggsave("figures/fig_NP.png", plot = fig_1, width = 25, height = 20, units = "cm"
 
 \caption*{
 Note: The graph illustrates the relationship between the CSA and Aspiration Gap, stratified by the four different practices.The solid line on each plot depicts a Loess smoothed relationship between aspiration gap and 
-practices. Loess smoothing is a nonparametric method that uses local weighted regression to fit a smooth curve through points in a scatter plot. This line represents the trend of CSA adoption as aspiration gap changes. The shaded region around the Loess line represents 95\% Confidence intervals. The width of the shaded region at any point along the x-axis provides a measure of the uncertainty around the estimate of the mean of adoption rate at that point. 
+practices. Loess smoothing is a nonparametric method that uses local weighted regression to fit a smooth curve through points in a scatter plot. This line represents the trend of CSA adoption as aspiration gap changes. The shaded region around the Loess line represents 95\% Confidence intervals. The red dashed line indicates the 75th percentile, and the green line represents the 90th percentile of the aspiration gap. This figure is derived from a locally weighted regression analysis with a span (alpha) of 0.8 and a polynomial degree of 0.
 }
 \end{figure}
 
@@ -356,11 +374,11 @@ data <- aspiration_df$gap
 # Sample data (replace this with your actual data)
 
 # Calculate the percentiles
-percentiles <- quantile(data, probs = c(0.75, 0.95))
+percentiles <- quantile(data, probs = c(0.75, 0.90))
 
 # Create a data frame for the percentiles
 percentile_df <- data.frame(
-  Percentile = c("75th", "95th"),
+  Percentile = c("75th", "90th"),
   Value = percentiles
 )
 
@@ -391,65 +409,7 @@ ggsave("figures/fig_gap_dist.png", plot = ss, width = 25, height = 20, units = "
 
 
 
-```{r, eval=FALSE}
 
-my_font <- "Frutiger"
-df <- aspiration_df%>%
-  select(interview__key, gap, fallowing, manure, intercropping, crop_rotation)%>%
-  pivot_longer(cols = c(fallowing, manure, intercropping, crop_rotation))%>%
-  mutate(name2 = str_to_sentence(name))%>%
-  mutate(name2 = case_when(
-   name2=="Manure" ~ "Organic soil\namendments",
-
-    name2=="Crop_rotation" ~ "Crop rotation",
-    TRUE ~ name2
-  ))
-
-# df 2 group by name2 and get the 75th and 90th percentile of gap
-df2 <- df %>%
-  group_by(name2) %>%
-  summarise(percentile_75 = quantile(gap, 0.75),
-            percentile_90 = quantile(gap, 0.90))
-
-percentile_75 <- quantile(aspiration_df$gap, 0.75)
-percentile_90 <- quantile(aspiration_df$gap, 0.90)
-
-# vertical lines marking the 75th and 90th percentiles of the observed values (gap)
-vline_75 <- geom_vline(xintercept = percentile_75, linetype = "dashed", color = "#800013", size = 0.86)
-vline_90 <- geom_vline(xintercept = percentile_90,  color = "#346233", size = 0.8)
-
-# add the vertical lines to the plot
-
-# add the text labels to the plot
-
-
-fig_1 <- ggplot(df, aes(y=value, x=gap, color=name2)) + 
-  geom_smooth(method="loess", se=TRUE, span=0.8) +
-  #geom_smooth(method="glm",  method.args = list(family="binomial"))  + 
-  facet_wrap(~name2, scales = "free_y") + # use facet_grid(~csa, scales = "free") for a grid layout
-  scale_color_brewer(palette="Set1")+ 
-  labs(x = "Aspiration gap", y = "") +
-  theme_bw(base_family = my_font, base_size = 18)+
-  theme(
-    legend.position = "none",
-      text = element_text(family = my_font, size = 14),
-      axis.text = element_text(family = my_font, size = 14),
-      strip.background = element_rect(fill = adjustcolor("#679DBB", alpha.f = 0.8), color = "#679DBB"),
-
-      panel.border = element_rect(size = 0, fill = NA),
-    panel.grid.minor = element_blank(),
-    panel.grid.major = element_line(size = 0.5, linetype = 3),
-      strip.text = element_text(
-        family = my_font,
-        size = 14, color = "black" )
-  )
-fig_1 <- fig_1 + vline_75 + vline_90
-fig_1
-
-ggsave("figures/fig_NP.pdf", plot = fig_1, width = 25, height = 20, units = "cm",device = cairo_pdf)
-ggsave("figures/fig_NP.png", plot = fig_1, width = 25, height = 20, units = "cm")
-
-```
 \newpage
 ## Cameroon
 
@@ -466,11 +426,21 @@ df_cam <- aspiration_df%>%
     TRUE ~ name2
   ))
 
+aspiration_df_cam <- aspiration_df%>%
+  filter(country=="Cameroon")
 
-fig_2 <- ggplot(df_cam, aes(y=value, x=gap, color=name2)) + 
-  geom_smooth(method="loess", se=TRUE, span=0.9) +
+percentile_75 <- quantile(aspiration_df_cam$gap, 0.75)
+percentile_90 <- quantile(aspiration_df_cam$gap, 0.90)
+
+# vertical lines marking the 75th and 90th percentiles of the observed values (gap)
+vline_75 <- geom_vline(xintercept = percentile_75, linetype = "dashed", color = "#800013", size = 0.86)
+vline_90 <- geom_vline(xintercept = percentile_90,  color = "#346233", size = 0.8)
+
+fig_2 <- ggplot(df_cam, aes(y=value, x=gap, color=name2, fill=name2)) + 
+  geom_smooth(method="loess", se=TRUE, span=0.8) +
   facet_wrap(~name2, scales = "free_y") + # use facet_grid(~csa, scales = "free") for a grid layout
   scale_color_brewer(palette="Set1")+ 
+  scale_fill_manual(values = c("#95BAFF", "#95BAFF","#95BAFF","#95BAFF"))+
   labs(x = "Aspiration gap", y = "") +
   theme_bw(base_family = my_font, base_size = 18)+
   theme(
@@ -487,6 +457,7 @@ fig_2 <- ggplot(df_cam, aes(y=value, x=gap, color=name2)) +
         size = 14, color = "black" )
   )
 
+fig_2 <- fig_2 + vline_75 + vline_90
 fig_2
 
 ggsave("figures/fig_NP_cam.pdf", plot = fig_2, width = 25, height = 20, units = "cm",device = cairo_pdf)
@@ -500,7 +471,7 @@ ggsave("figures/fig_NP_cam.png", plot = fig_2, width = 25, height = 20, units = 
 \includegraphics[width=\textwidth]{figures/fig_NP_cam.pdf}
 
 \caption*{
-Note: The graph illustrates the relationship between the variable CSA and Aspiration Gap, stratified by the four different practices for Cameroon.The solid line on each plot depicts a Loess smoothed relationship between aspiration gap and CSA practices. Loess smoothing is a nonparametric method that uses local weighted regression to fit a smooth curve through points in a scatter plot. This line represents the trend of CSA adoption as aspiration gap changes. The shaded region around the Loess line represents 95\% Confidence intervals. The width of the shaded region at any point along the x-axis provides a measure of the uncertainty around the estimate of the mean of adopion rate at that point. 
+Note: The graph illustrates the relationship between the variable CSA and Aspiration Gap, stratified by the four different practices for Cameroon.The solid line on each plot depicts a Loess smoothed relationship between aspiration gap and CSA practices. Loess smoothing is a nonparametric method that uses local weighted regression to fit a smooth curve through points in a scatter plot. This line represents the trend of CSA adoption as aspiration gap changes. The shaded region around the Loess line represents 95\% Confidence intervals. The red dashed line indicates the 75th percentile, and the green line represents the 90th percentile of the aspiration gap. This figure is derived from a locally weighted regression analysis with a span (alpha) of 0.8 and a polynomial degree of 0. 
 }
 \end{figure}
 
@@ -519,11 +490,22 @@ df_ken <- aspiration_df%>%
     TRUE ~ name2
   ))
 
+aspiration_df_ken <- aspiration_df%>%
+  filter(country=="Kenya")
 
-fig_3 <- ggplot(df_ken, aes(y=value, x=gap, color=name2)) + 
+percentile_75 <- quantile(aspiration_df_ken$gap, 0.75)
+percentile_90 <- quantile(aspiration_df_ken$gap, 0.90)
+
+# vertical lines marking the 75th and 90th percentiles of the observed values (gap)
+vline_75 <- geom_vline(xintercept = percentile_75, linetype = "dashed", color = "#800013", size = 0.86)
+vline_90 <- geom_vline(xintercept = percentile_90,  color = "#346233", size = 0.8)
+
+
+fig_3 <- ggplot(df_ken, aes(y=value, x=gap, color=name2, fill=name2)) + 
   geom_smooth(method="loess", se=TRUE, span=0.9 ) +
   facet_wrap(~name2, scales = "free_y") + # use facet_grid(~csa, scales = "free") for a grid layout
   scale_color_brewer(palette="Set1")+ 
+  scale_fill_manual(values = c("#95BAFF", "#95BAFF","#95BAFF","#95BAFF"))+
   labs(x = "Aspiration gap", y = "") +
   theme_bw(base_family = my_font, base_size = 18)+
   theme(
@@ -539,20 +521,11 @@ fig_3 <- ggplot(df_ken, aes(y=value, x=gap, color=name2)) +
         family = my_font,
         size = 14, color = "black" )
   )
+fig_3 <- fig_3 + vline_75 + vline_90
 fig_3
 ggsave("figures/fig_NP_ken.pdf", plot = fig_3, width = 25, height = 20, units = "cm",device = cairo_pdf)
 ggsave("figures/fig_NP_ken.png", plot = fig_3, width = 25, height = 20, units = "cm")
 
-library(KernSmooth)
-library(locpol)
-y <-aspiration_df$intercropping
-x <-aspiration_df$gap
-plot(x, y)
-fit <- locpoly(x, y, bandwidth = 0.3)
-plot(fit)
-
-rr <- locpol::locpol(intercropping ~ gap, data = aspiration_df, bw = 0.13)
-plot(rr)
 
 ```
 
@@ -562,7 +535,7 @@ plot(rr)
 \includegraphics[width=\textwidth]{figures/fig_NP_ken.pdf}
 
 \caption*{
-Note: The graph illustrates the relationship between the variable CSA and Aspiration Gap, stratified by the four different practices for Kenya.The solid line on each plot depicts a Loess smoothed relationship between aspiration gap and CSA practices. Loess smoothing is a nonparametric method that uses local weighted regression to fit a smooth curve through points in a scatter plot. This line represents the trend of CSA adoption as aspiration gap changes. The shaded region around the Loess line represents 95\% Confidence intervals. The width of the shaded region at any point along the x-axis provides a measure of the uncertainty around the estimate of the mean of adoption rate at that point. 
+Note: The graph illustrates the relationship between the variable CSA and Aspiration Gap, stratified by the four different practices for Kenya.The solid line on each plot depicts a Loess smoothed relationship between aspiration gap and CSA practices. Loess smoothing is a nonparametric method that uses local weighted regression to fit a smooth curve through points in a scatter plot. This line represents the trend of CSA adoption as aspiration gap changes. The shaded region around the Loess line represents 95\% Confidence intervals. The red dashed line indicates the 75th percentile, and the green line represents the 90th percentile of the aspiration gap. This figure is derived from a locally weighted regression analysis with a span (alpha) of 0.8 and a polynomial degree of 0. 
 }
 \end{figure}
 \newpage
@@ -769,13 +742,6 @@ landscape()%>%
            threeparttable = TRUE,general = "The table provides the findings from Full Poisson and Ordered probit estimations, carried out to explore the association between aspiration and Climate-Smart Agriculture (CSA) practices. The Full Poisson model was utilized to handle count outcomes while the Ordered probit model was used for ordinal outcomes. Robust standard errors, stated within brackets, were utilized to mitigate the impact of heteroscedasticity. Statistical tests were performed using two-sided t-tests, and the corresponding p-values are displayed within square brackets. Coefficients designated with an asterisk () indicate statistical significance at preset significance thresholds (** p<0.01, ** p<0.05, * p<0.1). ")
 ```
 \newpage
-
-
-
-
-
-
-
 
 
 ```{r}

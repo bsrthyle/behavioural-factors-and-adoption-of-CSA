@@ -182,6 +182,7 @@ df <- aspiration_df%>%
   mutate(name2 = str_to_sentence(name))%>%
   mutate(name2 = case_when(
     name2=="Crop_rotation" ~ "Crop rotation",
+    name2=="Manure" ~ "Organic soil\namendments",
     TRUE ~ name2
   ))%>%
   select(-name)%>%
@@ -203,7 +204,7 @@ ss <- ggplot(df, aes(x = name2,
     position = position_dodge(.8)) +
     theme_bw(base_family = my_font,
     base_size = 16) +
-  labs(y="Percent of households", x="Outcomes")+
+  labs(y="Percent of households", x="CSA practices")+
     scale_y_continuous(labels = scales::label_percent(scale = 1)) +
     scale_fill_manual(values = c("#1f5e77","#e3542a", "#EEAB73")) +
     #scale_fill_manual(values = c("#305596", "#305596", "#305596"))+
